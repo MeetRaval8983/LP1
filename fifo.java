@@ -21,6 +21,7 @@ public class fifo {
 
         int pointer = 0;   // FIFO pointer
         int faults = 0;
+        int hits = 0;      // <-- ADDED: Initialize hits counter
 
         System.out.println("\nPage\tFrames");
 
@@ -41,6 +42,9 @@ public class fifo {
                 frame[pointer] = page;    // replace oldest page
                 pointer = (pointer + 1) % frames;  // move in circular manner
                 faults++;
+            } else {
+                // <-- ADDED: If it IS found, increment hits
+                hits++;
             }
 
             // Print frame status
@@ -53,6 +57,7 @@ public class fifo {
         }
 
         System.out.println("\nTotal Page Faults = " + faults);
+        System.out.println("Total Page Hits = " + hits); // <-- ADDED: Print total hits
         sc.close();
     }
 }
