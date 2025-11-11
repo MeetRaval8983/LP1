@@ -1,0 +1,163 @@
+import java.io.*;
+import java.util.*;
+
+class Pass1 {
+    public static void main(String[] args) throws Exception {
+        int lc = 0;             // Location counter
+        int literalCount = 0;   // Literal table count
+        int symbolCount = 0;    // Symbol table count
+
+        // Imperative statements, assembler directives, declarative statements, registers
+        String[][] IS = {{"STOP","01"},{"ADD","02"},{"SUB","03"},{"MUL","04"},{"MOVER","05"},{"MOVEM","06"}};
+        String[][] AD = {{"START","01"},{"END","02"},{"ORIGIN","03"},{"LTORG","04"}};
+        String[][] DL = {{"DC","01"},{"DS","02"}};
+        String[][] REG = {{"AX","1"},{"BX","2"},{"CX","3"},{"DX","4"}};
+
+        // Open files
+        BufferedReader br = new BufferedReader(new FileReader("sample.txt"));
+        BufferedWriter iw = new BufferedWriter(new FileWriter("intermediate.txt"));
+        BufferedWriter stw = new BufferedWriter(new FileWriter("symboltab.txt"));
+        BufferedWriter ltw = new BufferedWriter(new FileWriter("literaltab.txt"));
+
+        Map<String,Integer> symbolTable = new LinkedHashMap<>();
+        Map<String,Integer> literalTable = new LinkedHashMap<>();
+        Map<String,String> registerMap = new HashMap<>();
+
+        // Register mapping
+        for(String[] r: REG){
+            registerMap.put(r[0].toUpperCase(), r[1]);
+        }
+
+        String line;
+        while((line = br.readLine()) != null){
+            line = line.trim();
+            if(line.isEmpty()) continue;
+
+            String[] tokens = line.split("\\s+");
+            String label = null;
+            String opcode = null;
+            String op1 = null;
+            String op2 = null;
+
+            // Detect label
+            if(tokens[0].endsWith(":")){
+                label = tokens[0].substring(0, tokens[0].length()-1);
+                opcode = tokens.length > 1 ? tokens[1] : null;
+                op1 = tokens.length > 2 ? tokens[2] : null;
+                op2 = tokens.length > 3 ? tokens[3] : null;
+            } else {
+                opcode = tokens[0];
+                op1 = tokens.length > 1 ? tokens[1] : null;
+                op2 = tokens.length > 2 ? tokens[2] : null;
+            }
+
+            // START directive
+            if(opcode != null && opcode.equalsIgnoreCase("START")){
+                lc = Integer.parseInt(op1);
+                iw.write(lc + " AD 01 C " + op1);
+                iw.newLine();
+                lc++; // increment LC for first instruction
+                continue;
+            }
+
+            // END directive
+            if(opcode != null && opcode.equalsIgnoreCase("END")){
+                for(Map.Entry<String,Integer> entry : literalTable.entrySet()){
+                    iw.write(lc + " AD 02 C " + entry.getValue());
+                    iw.newLine();
+                    lc++;
+                }
+                break;
+            }
+
+            // Add label to symbol table
+            if(label != null){
+                if(!symbolTable.containsKey(label)){
+                    symbolTable.put(label, lc);
+                    stw.write(label + " " + lc);
+                    stw.newLine();
+                }
+            }
+
+            iw.write(lc + " "); // write LC
+
+            boolean found = false;
+
+            // Check imperative statements
+            for(String[] i: IS){
+                if(opcode != null && opcode.equalsIgnoreCase(i[0])){
+                    iw.write("IS " + i[1]);
+                    found = true;
+                    break;
+                }
+            }
+
+            // Check declarative statements
+            if(!found){
+                for(String[] d: DL){
+                    if(opcode != null && opcode.equalsIgnoreCase(d[0])){
+                        iw.write("DL " + d[1]);
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            // Check assembler directives
+            if(!found){
+                for(String[] a: AD){
+                    if(opcode != null && opcode.equalsIgnoreCase(a[0])){
+                        iw.write("AD " + a[1]);
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            // Register mapping
+            if(op1 != null){
+                String regCode = registerMap.get(op1.toUpperCase());
+                if(regCode != null){
+                    iw.write(" R" + regCode);
+                }
+            }
+
+            // Operand 2: literal or symbol
+            if(op2 != null){
+                // Literal
+                if(op2.contains("=")){
+                    if(!literalTable.containsKey(op2)){
+                        literalCount++;
+                        literalTable.put(op2, literalCount);
+                        ltw.write(literalCount + " " + op2);
+                        ltw.newLine();
+                    }
+                    iw.write(" L " + literalTable.get(op2));
+                }
+                // Symbol
+                else if(op2.matches("[a-zA-Z]+")){
+                    if(!registerMap.containsKey(op2.toUpperCase())) { // don't add registers
+                        if(!symbolTable.containsKey(op2)){
+                            symbolCount++;
+                            symbolTable.put(op2, lc); // first appearance LC
+                            stw.write(op2 + " " + lc);
+                            stw.newLine();
+                        }
+                        iw.write(" S " + symbolCount);
+                    }
+                }
+            }
+
+            lc++; // increment LC
+            iw.newLine();
+        }
+
+        // Close all files
+        br.close();
+        iw.close();
+        stw.close();
+        ltw.close();
+
+        System.out.println("Pass 1 completed successfully.");
+    }
+}

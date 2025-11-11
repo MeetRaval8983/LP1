@@ -1,0 +1,202 @@
+import java.io.*;
+import java.util.*;
+
+class Pass1 {
+    public static void main(String[] args) throws Exception {
+        int lc = 0;              
+        int literalCount = 0;    
+        int symbolCount = 0;     
+
+        // Instruction Set (IS) Table
+        Map<String, String> IS = new HashMap<>();
+        IS.put("STOP", "00");
+        IS.put("ADD", "01");
+        IS.put("SUB", "02");
+        IS.put("MUL", "03");
+        IS.put("MOVER", "04");
+        IS.put("MOVEM", "05");
+        IS.put("COMP", "06");
+        IS.put("BC", "07");
+        IS.put("DIV", "08");
+
+        // Assembler Directives (AD)
+        Map<String, String> AD = new HashMap<>();
+        AD.put("START", "01");
+        AD.put("END", "02");
+        AD.put("ORIGIN", "03");
+        AD.put("LTORG", "04");
+        AD.put("EQU", "05");
+
+        // Declarative (DL)
+        Map<String, String> DL = new HashMap<>();
+        DL.put("DC", "01");
+        DL.put("DS", "02");
+
+        // Registers
+        Map<String, String> REG = new HashMap<>();
+        REG.put("AX", "R1");
+        REG.put("BX", "R2");
+        REG.put("CX", "R3");
+        REG.put("DX", "R4");
+
+        BufferedReader br = new BufferedReader(new FileReader("sample.txt"));
+        BufferedWriter iw = new BufferedWriter(new FileWriter("intermediate.txt"));
+        BufferedWriter stw = new BufferedWriter(new FileWriter("symboltab.txt"));
+        BufferedWriter ltw = new BufferedWriter(new FileWriter("literaltab.txt"));
+
+        Map<String,Integer> symbolTable = new LinkedHashMap<>();
+        Map<String,Integer> literalTable = new LinkedHashMap<>();
+        Map<String,String> pendingEQU = new HashMap<>();
+
+        String line;
+        while((line = br.readLine()) != null){
+            line = line.trim();
+            if(line.isEmpty()) continue;
+
+            String[] tokens = line.split("\\s+");
+            String label = null;
+            String opcode = null;
+            String op1 = null;
+            String op2 = null;
+
+            if(tokens[0].endsWith(":")){
+                label = tokens[0].substring(0, tokens[0].length()-1);
+                opcode = tokens.length > 1 ? tokens[1] : null;
+                op1 = tokens.length > 2 ? tokens[2] : null;
+                op2 = tokens.length > 3 ? tokens[3] : null;
+            } else {
+                opcode = tokens[0];
+                op1 = tokens.length > 1 ? tokens[1] : null;
+                op2 = tokens.length > 2 ? tokens[2] : null;
+            }
+
+            // START
+            if(opcode != null && opcode.equalsIgnoreCase("START")){
+                lc = Integer.parseInt(op1);
+                iw.write(lc + " AD 01 C " + op1);
+                iw.newLine();
+                lc++;
+                continue;
+            }
+
+            // END
+            if(opcode != null && opcode.equalsIgnoreCase("END")){
+                for(Map.Entry<String,Integer> entry : literalTable.entrySet()){
+                    iw.write(lc + " AD 02 C " + entry.getValue());
+                    iw.newLine();
+                    lc++;
+                }
+                break;
+            }
+
+            // EQU handling
+            if(opcode != null && opcode.equalsIgnoreCase("EQU") && label != null && op1 != null){
+                pendingEQU.put(label, op1);
+                continue;
+            }
+
+            // ORIGIN
+            if(opcode != null && opcode.equalsIgnoreCase("ORIGIN") && op1 != null){
+                if(symbolTable.containsKey(op1)){
+                    lc = symbolTable.get(op1);
+                } else if(op1.contains("+")){
+                    String[] parts = op1.split("\\+");
+                    String sym = parts[0];
+                    int offset = Integer.parseInt(parts[1]);
+                    if(symbolTable.containsKey(sym)){
+                        lc = symbolTable.get(sym) + offset;
+                    } else {
+                        lc = offset;
+                    }
+                } else {
+                    lc = Integer.parseInt(op1);
+                }
+                iw.write(lc + " AD 03");
+                iw.newLine();
+                continue;
+            }
+
+            // Label → Symbol Table
+            if(label != null && !symbolTable.containsKey(label)){
+                symbolTable.put(label, lc);
+                stw.write(label + " " + lc);
+                stw.newLine();
+            }
+
+            iw.write(lc + " ");
+
+            boolean found = false;
+
+            // IS
+            if(opcode != null && IS.containsKey(opcode.toUpperCase())){
+                iw.write("IS " + IS.get(opcode.toUpperCase()));
+                found = true;
+            }
+
+            // DL
+            if(!found && opcode != null && DL.containsKey(opcode.toUpperCase())){
+                iw.write("DL " + DL.get(opcode.toUpperCase()));
+                found = true;
+            }
+
+            // AD
+            if(!found && opcode != null && AD.containsKey(opcode.toUpperCase())){
+                iw.write("AD " + AD.get(opcode.toUpperCase()));
+                found = true;
+            }
+
+            // Operand1: Register
+            if(op1 != null){
+                String regCode = REG.get(op1.toUpperCase());
+                if(regCode != null){
+                    iw.write(" " + regCode);
+                }
+            }
+
+            // Operand2: Literal or Symbol
+            if(op2 != null){
+                if(op2.contains("=")){
+                    if(!literalTable.containsKey(op2)){
+                        literalCount++;
+                        literalTable.put(op2, literalCount);
+                        ltw.write(literalCount + " " + op2);
+                        ltw.newLine();
+                    }
+                    iw.write(" L " + literalTable.get(op2));
+                }
+                else if(op2.matches("[a-zA-Z]+")){
+                    if(!REG.containsKey(op2.toUpperCase())){
+                        if(!symbolTable.containsKey(op2)){
+                            symbolCount++;
+                            symbolTable.put(op2, lc);
+                            stw.write(op2 + " " + lc);
+                            stw.newLine();
+                        }
+                        iw.write(" S " + symbolCount);
+                    }
+                }
+            }
+
+            lc++;
+            iw.newLine();
+        }
+
+        // Resolve pending EQU
+        for(Map.Entry<String,String> e : pendingEQU.entrySet()){
+            String label = e.getKey();
+            String sym = e.getValue();
+            if(symbolTable.containsKey(sym)){
+                symbolTable.put(label, symbolTable.get(sym));
+                stw.write(label + " " + symbolTable.get(sym));
+                stw.newLine();
+            }
+        }
+
+        br.close();
+        iw.close();
+        stw.close();
+        ltw.close();
+
+        System.out.println("Pass 1 completed successfully.");
+    }
+}

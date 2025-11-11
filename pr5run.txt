@@ -1,0 +1,109 @@
+hl@hl-HP-Desktop-Pro-G2:~/Documents$ javac B11.java
+
+hl@hl-HP-Desktop-Pro-G2:~/Documents$ javac -h . B11.java
+
+hl@hl-HP-Desktop-Pro-G2:~/Documents$ gcc -shared -fPIC -I/usr/lib/jvm/java-21-openjdk-amd64/include/ -I/usr/lib/jvm/java-21-openjdk-amd64/include/linux/B11.c -o libB11.so
+
+gcc: fatal error: no input files
+
+compilation terminated.
+
+hl@hl-HP-Desktop-Pro-G2:~/Documents$ gcc -shared -fPIC -I/usr/lib/jvm/java-21-openjdk-amd64/include/ -I/usr/lib/jvm/java-21-openjdk-amd64/include/linux/ B11.c -o libB11.so
+
+B11.c: In function ‘Java_B11_add1’:
+
+B11.c:7:1: warning: ‘return’ with no value, in function returning non-void
+
+    7 | return;
+
+      | ^~~~~~
+
+B11.c:4:23: note: declared here
+
+    4 | JNIEXPORT int JNICALL Java_B11_add1(JNIEnv *env, jobject obj, jint a, jint b)
+
+      |                       ^~~~~~~~~~~~~
+
+B11.c: In function ‘Java_B11_sub1’:
+
+B11.c:12:1: warning: ‘return’ with no value, in function returning non-void
+
+   12 | return;
+
+      | ^~~~~~
+
+B11.c:9:23: note: declared here
+
+    9 | JNIEXPORT int JNICALL Java_B11_sub1(JNIEnv *env, jobject obj, jint a, jint b)
+
+      |                       ^~~~~~~~~~~~~
+
+B11.c: In function ‘Java_B11_mult1’:
+
+B11.c:17:1: warning: ‘return’ with no value, in function returning non-void
+
+   17 | return;
+
+      | ^~~~~~
+
+B11.c:14:23: note: declared here
+
+   14 | JNIEXPORT int JNICALL Java_B11_mult1(JNIEnv *env, jobject obj, jint a, jint b)
+
+      |                       ^~~~~~~~~~~~~~
+
+B11.c: In function ‘Java_B11_div1’:
+
+B11.c:23:1: warning: ‘return’ with no value, in function returning non-void
+
+   23 | return;
+
+      | ^~~~~~
+
+B11.c:20:23: note: declared here
+
+   20 | JNIEXPORT int JNICALL Java_B11_div1(JNIEnv *env, jobject obj, jint a, jint b)
+
+      |                       ^~~~~~~~~~~~~
+
+hl@hl-HP-Desktop-Pro-G2:~/Documents$ java -Djava.library.path=. B11
+
+ Enter value of a : 
+
+12
+
+ Enter value of b : 
+
+4
+
+ ENTER YOUR CHOICE : 
+
+1
+
+12 + 4 = 16
+
+ ENTER YOUR CHOICE : 
+
+2
+
+12 - 4 = 8
+
+ ENTER YOUR CHOICE : 
+
+3
+
+12 * 4 = 48
+
+ ENTER YOUR CHOICE : 
+
+4
+
+12 / 4 = 3
+
+ ENTER YOUR CHOICE : 
+
+5
+
+Your choice is wrong.
+
+hl@hl-HP-Desktop-Pro-G2:~/Documents$ a

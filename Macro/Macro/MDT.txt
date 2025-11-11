@@ -1,0 +1,5 @@
+	INCR	&X	&Y	&REG=AREG
+	MOVER	#2	#0
+	ADD	#2	#1
+	MOVEM	#2	#0
+	MEND
